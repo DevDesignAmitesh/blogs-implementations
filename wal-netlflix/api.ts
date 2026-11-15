@@ -1,6 +1,7 @@
 import express from "express";
 import { wal } from "./wal";
-import { handleRetry } from "./handleRetry";
+import { retryManager } from "./retry-manager";
+import type { QueuePayloadType } from "./types";
 
 const app = express();
 const PORT = 4000;
@@ -11,24 +12,23 @@ app.post("/write", async (req, res) => {
   const { name } = req.body;
   const userId = crypto.randomUUID();
 
+  const payload: QueuePayloadType = {
+    type: "create_user",
+    payload: { name, id: userId },
+  };
+
   try {
-    await wal.write({
-      type: "create_user",
-      payload: { name, id: userId },
-    });
+    await wal.write(payload);
 
     res.json({ message: "request accepted" });
   } catch (e) {
     // handle retry
-    const retryId = crypto.randomUUID();
-
-    const response = await handleRetry({
-      id: retryId,
-      type: "create_user",
-      payload: { name, id: userId },
-      maxRetry: 5,
-      action: wal.write,
+    const response = await retryManager.handleRetry({
+      action: () => wal.write(payload),
+      maxRetry: 4,
     });
+
+    // return the response statement
   }
 });
 

@@ -1,4 +1,5 @@
 import { type RedisClientType, createClient } from "redis";
+import type { QueuePayloadType } from "./types";
 
 class WalManager {
   private static instance: WalManager;
@@ -24,7 +25,7 @@ class WalManager {
     return WalManager.instance;
   };
 
-  write = async (data: { type: "create_user"; payload: unknown }) => {
+  write = async (data: QueuePayloadType) => {
     await this.publisher.lPush(data.type, JSON.stringify(data.payload));
   };
 
