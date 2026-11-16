@@ -26,7 +26,9 @@ class WalManager {
   };
 
   write = async (data: QueuePayloadType) => {
-    await this.publisher.lPush(data.type, JSON.stringify(data.payload));
+    console.log("write running");
+    throw new Error("just checking broo");
+    // await this.publisher.lPush(data.type, JSON.stringify(data.payload));
   };
 
   consume = async (key: "create_user") => {

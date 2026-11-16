@@ -12,5 +12,4 @@ export type Retry = {
   type: RetryTypeEnum;
   action: () => void;
   maxRetry: number;
-  totalRetry: number;
 };

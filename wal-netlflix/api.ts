@@ -20,7 +20,7 @@ app.post("/write", async (req, res) => {
   try {
     await wal.write(payload);
 
-    res.json({ message: "request accepted" });
+    res.status(201).json({ message: "request accepted" });
   } catch (e) {
     // handle retry
     const response = await retryManager.handleRetry({
@@ -28,7 +28,17 @@ app.post("/write", async (req, res) => {
       maxRetry: 4,
     });
 
+    console.log("RECEIVED RESPONSE", response);
+
     // return the response statement
+    if (!response) {
+      res.status(503).json({
+        message: "something went wrong, try again after few minutes",
+      });
+      return;
+    }
+
+    res.status(201).json({ message: "request accepted" });
   }
 });
 

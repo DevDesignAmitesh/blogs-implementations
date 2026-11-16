@@ -24,7 +24,46 @@ class RetryManager {
     await this.client.connect();
   };
 
-  private retry = async () => {};
+  private retry = async ({
+    action,
+    maxRetry = 3,
+    DELTA = 1,
+  }: {
+    action: () => void;
+    maxRetry: number;
+    DELTA: number;
+  }) => {
+    const response = await new Promise<boolean>((res, rej) => {
+      console.log("RETRYING WITH PAYLOAD", { maxRetry, DELTA, action });
+
+      const delay = DELTA * 1000;
+
+      if (maxRetry <= 0) {
+        console.log("IS ZERO");
+        res(false);
+      } else {
+        setTimeout(async () => {
+          try {
+            console.log("RUNNING TIMEOUT - 1");
+            await action();
+            res(true);
+          } catch {
+            console.log("RUNNING TIMEOUT - 2");
+            const catchResponse = await this.retry({
+              action,
+              maxRetry: maxRetry - 1,
+              DELTA: DELTA * 2,
+            });
+            res(catchResponse);
+          }
+        }, delay);
+      }
+    });
+
+    console.log("PROMISE RESPONSE", response);
+
+    return response;
+  };
 
   handleRetry = async ({
     action,
@@ -33,42 +72,64 @@ class RetryManager {
     action: () => void;
     maxRetry: number;
   }) => {
+    console.log("STARTED RETRY PROCESS");
+
     const retryId = crypto.randomUUID();
 
     try {
       // save the retry payload
-      await this.write({
+      const writeResponse = await this.write({
         id: retryId,
         action,
         maxRetry,
-        totalRetry: 0,
         type: "retry:create_user",
       });
 
+      if (!writeResponse) {
+        return false;
+      }
+
       // retry THIS one
-      this.retry;
+      const response = await this.retry({
+        action,
+        maxRetry,
+        DELTA: 1,
+      });
+
+      console.log("HANDLE RETYR, RETRY RESPONSE", response);
+
+      if (!response) {
+        return false;
+      }
 
       // delete & update it
       const retires = await this.get("retry:create_user");
+
+      console.log("RETIREs", retires);
 
       const filteredRetries = retires
         .filter((rt) => rt.id !== retryId)
         .map((rt) => JSON.stringify(rt));
 
       await this.update("retry:create_user", filteredRetries);
+
+      return true;
     } catch (e) {
       // save if error occurred
       await this.write({
         id: retryId,
         action,
         maxRetry,
-        totalRetry: 0,
         type: "retry:create_user",
       });
+
+      return false;
     }
   };
 
   write = async (data: Retry) => {
+    console.log("DATA IN sADD", data);
+
     try {
       const key = data.type;
       await this.client.sAdd(key, JSON.stringify(data));
