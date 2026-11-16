@@ -1,7 +1,6 @@
-// todo: when we are starting the server, take all the pending todos from the "consume" function and run themm
-
 import { createClient, type RedisClientType } from "redis";
 import type { Retry, RetryTypeEnum } from "./types";
+import { wal } from "./wal";
 
 class RetryManager {
   private static instance: RetryManager;
@@ -54,6 +53,7 @@ class RetryManager {
               maxRetry: maxRetry - 1,
               DELTA: DELTA * 2,
             });
+
             res(catchResponse);
           }
         }, delay);
@@ -68,9 +68,11 @@ class RetryManager {
   handleRetry = async ({
     action,
     maxRetry,
+    payload,
   }: {
     action: () => void;
     maxRetry: number;
+    payload: unknown;
   }) => {
     console.log("STARTED RETRY PROCESS");
 
@@ -80,7 +82,7 @@ class RetryManager {
       // save the retry payload
       const writeResponse = await this.write({
         id: retryId,
-        action,
+        payload,
         maxRetry,
         type: "retry:create_user",
       });
@@ -96,11 +98,7 @@ class RetryManager {
         DELTA: 1,
       });
 
-      console.log("HANDLE RETYR, RETRY RESPONSE", response);
-
-      if (!response) {
-        return false;
-      }
+      console.log("HANDLE RETRY, RETRY RESPONSE", response);
 
       // delete & update it
       const retires = await this.get("retry:create_user");
@@ -113,12 +111,18 @@ class RetryManager {
 
       await this.update("retry:create_user", filteredRetries);
 
+      if (!response) {
+        // push into a DLQ (as this will be false after all the maxretry)
+        await wal.write({ payload, type: "dlq" });
+        return false;
+      }
+
       return true;
     } catch (e) {
       // save if error occurred
       await this.write({
         id: retryId,
-        action,
+        payload,
         maxRetry,
         type: "retry:create_user",
       });
@@ -154,6 +158,8 @@ class RetryManager {
   };
 
   update = async (key: RetryTypeEnum, retires: string[]) => {
+    if (!retires.length) return true;
+
     try {
       await this.client.sAdd(key, retires);
       return true;

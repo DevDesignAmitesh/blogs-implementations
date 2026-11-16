@@ -26,6 +26,7 @@ app.post("/write", async (req, res) => {
     const response = await retryManager.handleRetry({
       action: () => wal.write(payload),
       maxRetry: 4,
+      payload,
     });
 
     console.log("RECEIVED RESPONSE", response);

@@ -1,4 +1,4 @@
-// todo: understand and implement it.
+// todo: understand where to add retries with dlq and implement it.
 
 import { wal } from "./wal";
 

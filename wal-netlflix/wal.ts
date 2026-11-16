@@ -26,7 +26,7 @@ class WalManager {
   };
 
   write = async (data: QueuePayloadType) => {
-    console.log("write running");
+    console.log("wal write running");
     throw new Error("just checking broo");
     // await this.publisher.lPush(data.type, JSON.stringify(data.payload));
   };

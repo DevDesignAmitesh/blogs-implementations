@@ -1,4 +1,4 @@
-export type QueueEnumType = "create_user";
+export type QueueEnumType = "create_user" | "dlq";
 
 export type QueuePayloadType = {
   type: QueueEnumType;
@@ -10,6 +10,6 @@ export type RetryTypeEnum = "retry:create_user";
 export type Retry = {
   id: string;
   type: RetryTypeEnum;
-  action: () => void;
+  payload: unknown;
   maxRetry: number;
 };
