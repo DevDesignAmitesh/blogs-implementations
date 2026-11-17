@@ -105,11 +105,11 @@ class RetryManager {
 
       console.log("RETIREs", retires);
 
-      const filteredRetries = retires
-        .filter((rt) => rt.id !== retryId)
-        .map((rt) => JSON.stringify(rt));
+      const filteredRetry = JSON.stringify(
+        retires.find((rt) => rt.id === retryId),
+      );
 
-      await this.update("retry:create_user", filteredRetries);
+      await this.delete("retry:create_user", filteredRetry);
 
       if (!response) {
         // push into a DLQ (as this will be false after all the maxretry)
@@ -157,11 +157,9 @@ class RetryManager {
     }
   };
 
-  update = async (key: RetryTypeEnum, retires: string[]) => {
-    if (!retires.length) return true;
-
+  delete = async (key: RetryTypeEnum, retry: string) => {
     try {
-      await this.client.sAdd(key, retires);
+      await this.client.sRem(key, retry);
       return true;
     } catch (e) {
       console.log("error in update", e);
