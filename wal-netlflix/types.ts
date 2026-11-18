@@ -13,3 +13,11 @@ export type Retry = {
   payload: unknown;
   maxRetry: number;
 };
+
+export type RetryJob = {
+  id: string;
+  payload: unknown;
+  attempt: number;
+  maxAttempts: number;
+  nextRetryAt: number;
+};
